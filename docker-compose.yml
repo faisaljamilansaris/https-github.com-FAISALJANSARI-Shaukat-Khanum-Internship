@@ -1,0 +1,13 @@
+name: l3app
+
+services:
+  l3app:
+    build: .
+    image: l3-body-composition:latest
+    container_name: l3app
+    ports:
+      - "8000:8000"          # open http://localhost:8000
+    volumes:
+      - ./l3_data:/data      # uploads, results, reports and the database (l3_app.db) - kept on your computer
+    shm_size: "4gb"          # nnU-Net uses shared memory; Docker's default 64 MB crashes it
+    restart: unless-stopped

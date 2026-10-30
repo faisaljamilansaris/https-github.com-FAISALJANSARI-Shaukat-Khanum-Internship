@@ -1,0 +1,6 @@
+l3_data
+**/__pycache__
+**/*.pyc
+*.tar
+*.zip
+.git

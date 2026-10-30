@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L3 Body Composition</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --ink: #1d2a3a; --muted: #6b7786; --line: #e1e6ec;
+    --accent: #1f6feb; --accent-ink: #ffffff; --red: #d9534f; --green: #3a9a5b; --grey: #e0e0e0;
+    --sat: #f4a460; --vat: #7fbf7f; --imat: #9370db; --muscle: #f08080; --psr: #00e5ff; --psl: #ffeb3b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: #13202f; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; }
+  header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .2px; }
+  header span { color: #9fb0c3; font-size: 13px; }
+  .wrap { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; padding: 16px; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input[type=number], input[type=text], select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font: inherit; background: #fff; color: var(--ink); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .drop { border: 2px dashed #b9c4d0; border-radius: 9px; padding: 16px; text-align: center; color: var(--muted); font-size: 13.5px; transition: .15s; }
+  .drop.over { border-color: var(--accent); background: #eef4ff; }
+  .drop b { color: var(--ink); }
+  .pick { display: flex; gap: 8px; margin-top: 10px; }
+  button, .btn { appearance: none; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 8px 12px; border-radius: 7px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover, .btn:hover { border-color: #b9c4d0; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; width: 100%; justify-content: center; padding: 10px; margin-top: 16px; }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .pick button { flex: 1; justify-content: center; font-size: 13px; }
+  .sel { margin-top: 10px; font-size: 13px; color: var(--ink); min-height: 18px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .jobs { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow: auto; }
+  .jobs li { padding: 9px 10px; border-radius: 7px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+  .jobs li:hover { background: #f0f3f7; }
+  .jobs li.active { background: #e7effc; }
+  .jobs .t { color: var(--muted); font-size: 12px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; align-self: center; }
+  .pill.done { background: #e2f3e8; color: var(--green); } .pill.running, .pill.queued { background: #e7effc; color: var(--accent); }
+  .pill.error { background: #fbe5e4; color: var(--red); }
+  .empty { color: var(--muted); text-align: center; padding: 70px 20px; }
+  .empty .big { font-size: 17px; color: var(--ink); margin-bottom: 6px; }
+  .steps { list-style: none; padding: 0; margin: 14px 0 0; }
+  .steps li { display: flex; align-items: center; gap: 10px; padding: 7px 0; color: var(--muted); }
+  .steps .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; font-size: 12px; }
+  .steps li.now { color: var(--ink); font-weight: 600; } .steps li.now .dot { border-color: var(--accent); border-top-color: transparent; animation: spin 1s linear infinite; }
+  .steps li.ok { color: var(--ink); } .steps li.ok .dot { background: var(--green); border-color: var(--green); color: #fff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  pre.log { background: #13202f; color: #c8d4e1; font-size: 12px; padding: 10px 12px; border-radius: 7px; overflow: auto; max-height: 190px; white-space: pre-wrap; margin: 14px 0 0; }
+  .err { background: #fbe5e4; color: #8a2622; padding: 10px 12px; border-radius: 7px; margin-top: 12px; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .head .sub { color: var(--muted); font-size: 13px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+  .tile { border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font-size: 22px; font-weight: 700; margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 5px; color: #fff; display: inline-block; letter-spacing: .3px; }
+  .chip.LOW, .chip.HIGH { background: var(--red); } .chip.NORMAL { background: var(--green); }
+  .chip.grey { background: var(--grey); color: #333; }
+  .report img { width: 100%; border: 1px solid var(--line); border-radius: 8px; display: block; cursor: zoom-in; }
+  .dl { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  td, th { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.v { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+  tr.g td { background: #f7f9fb; font-weight: 700; font-size: 13px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; margin-top: 12px; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .tabs { display: flex; gap: 6px; margin-top: 18px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 12px; background: none; color: var(--muted); }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  .hidden { display: none !important; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; align-items: center; }
+  .filters input, .filters select { width: auto; min-width: 150px; }
+  .dbwrap { overflow-x: auto; }
+  main.card { min-width: 0; }
+  table.db { font-size: 13px; }
+  table.db td, table.db th { white-space: nowrap; padding: 6px 8px; }
+  table.db td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  table.db tr.click { cursor: pointer; } table.db tr.click:hover td { background: #f0f3f7; }
+  table.db .chip { margin-left: 6px; }
+</style>
+</head>
+<body>
+<header><h1>L3 Body Composition</h1><span>CT → SMI, PMI, SAT, VAT, IMAT, HU · research prototype</span></header>
+
+<div class="wrap">
+  <aside>
+    <div class="card">
+      <h2>New analysis</h2>
+      <div class="drop" id="drop"><b>Drop a DICOM folder here</b><br>or a .zip, or a .nii / .nii.gz file</div>
+      <div class="pick">
+        <button type="button" id="pickFolder">📁 Choose folder</button>
+        <button type="button" id="pickFiles">📄 Choose file(s)</button>
+      </div>
+      <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+      <input type="file" id="fileInput" multiple accept=".zip,.nii,.gz,.dcm,application/dicom" hidden>
+      <div class="sel" id="sel"></div>
+
+      <div class="row2">
+        <div><label for="height">Height (cm)</label><input type="number" id="height" min="80" max="230" step="0.1" placeholder="e.g. 170"></div>
+        <div><label for="weight">Weight (kg)</label><input type="number" id="weight" min="20" max="300" step="0.1" placeholder="optional"></div>
+      </div>
+      <div class="hint">Height is needed for SMI, PMI and the fat indices. If left empty it is read from the DICOM header. Weight gives BMI for the muscle-density cut-off.<br>A folder with several patients/scans is split into one analysis per scan; height, weight and sex typed here are used for all of them.</div>
+      <div class="row2">
+        <div><label for="sex">Sex</label>
+          <select id="sex"><option value="">From DICOM</option><option value="M">Male</option><option value="F">Female</option></select></div>
+        <div><label for="label">Label</label><input type="text" id="label" placeholder="optional"></div>
+      </div>
+      <button class="primary" id="run" disabled>Run analysis</button>
+      <div class="bar" id="upbar"><div></div></div>
+      <div class="hint" id="upmsg"></div>
+    </div>
+
+    <div class="card">
+      <div class="head" style="margin-bottom:10px"><h2 style="margin:0">Analyses</h2>
+        <button type="button" id="openDb">🗄️ All results</button></div>
+      <ul class="jobs" id="jobs"></ul>
+    </div>
+  </aside>
+
+  <main class="card" id="main">
+    <div class="empty"><div class="big">Upload a CT to begin</div>Choose an abdominal CT that includes L3. On this computer one scan takes about 15–30 minutes (CPU).</div>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let picked = [];          // [{file, path}]
+let current = null, pollTimer = null, tickTimer = null, jobsById = {};
+
+// ---------- picking files ----------
+$("#pickFolder").onclick = () => $("#folderInput").click();
+$("#pickFiles").onclick = () => $("#fileInput").click();
+$("#folderInput").onchange = e => setPicked([...e.target.files].map(f => ({file: f, path: f.webkitRelativePath || f.name})));
+$("#fileInput").onchange = e => setPicked([...e.target.files].map(f => ({file: f, path: f.name})));
+
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", async e => {
+  const items = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  const out = [];
+  async function walk(entry, prefix) {
+    if (entry.isFile) {
+      const f = await new Promise((res, rej) => entry.file(res, rej));
+      out.push({file: f, path: prefix + f.name});
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const en of batch) await walk(en, prefix + entry.name + "/");
+      } while (batch.length);
+    }
+  }
+  drop.innerHTML = "Reading folder…";
+  for (const it of items) await walk(it, "");
+  drop.innerHTML = "<b>Drop a DICOM folder here</b><br>or a .zip, or a .nii / .nii.gz file";
+  setPicked(out);
+});
+
+function setPicked(list) {
+  picked = list.filter(x => !/(^|\/)\.|thumbs\.db$/i.test(x.path));
+  const mb = picked.reduce((s, x) => s + x.file.size, 0) / 1e6;
+  const top = picked.length ? picked[0].path.split("/")[0] : "";
+  $("#sel").textContent = picked.length ? `${picked.length} file${picked.length > 1 ? "s" : ""} · ${mb.toFixed(1)} MB` + (picked.length > 1 ? ` · ${top}` : ` · ${picked[0].file.name}`) : "";
+  $("#run").disabled = !picked.length;
+}
+
+// ---------- upload ----------
+$("#run").onclick = () => {
+  const fd = new FormData();
+  picked.forEach(x => fd.append("files", x.file, x.path));
+  if ($("#height").value) fd.append("height_cm", $("#height").value);
+  if ($("#weight").value) fd.append("weight_kg", $("#weight").value);
+  fd.append("sex", $("#sex").value);
+  fd.append("label", $("#label").value);
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/jobs");
+  $("#run").disabled = true; $("#upbar").style.display = "block"; $("#upmsg").textContent = "Uploading…";
+  xhr.upload.onprogress = e => { if (e.lengthComputable) $("#upbar > div").style.width = (100 * e.loaded / e.total) + "%"; };
+  xhr.onload = () => {
+    $("#upbar").style.display = "none"; $("#upbar > div").style.width = 0;
+    if (xhr.status === 200) {
+      const j = JSON.parse(xhr.responseText);
+      const n = (j.jobs || [j]).length;
+      $("#upmsg").textContent = n > 1
+        ? `${n} scans found → ${n} analyses queued (one runs at a time).` + (j.height_m ? " Note: the same height was used for all of them." : "")
+        : "";
+      setPicked([]); $("#folderInput").value = ""; $("#fileInput").value = "";
+      loadJobs(); openJob(j.id);
+    } else {
+      let msg = xhr.responseText; try { msg = JSON.parse(msg).detail; } catch (e) {}
+      $("#upmsg").textContent = "Upload failed: " + msg; $("#run").disabled = false;
+    }
+  };
+  xhr.onerror = () => { $("#upmsg").textContent = "Upload failed (is the app still running?)"; $("#run").disabled = false; };
+  xhr.send(fd);
+};
+
+// ---------- job list ----------
+async function loadJobs() {
+  const list = await (await fetch("/api/jobs")).json();
+  jobsById = Object.fromEntries(list.map(j => [j.id, j]));
+  const ul = $("#jobs"); ul.innerHTML = "";
+  if (!list.length) { ul.innerHTML = '<li class="t" style="cursor:default">No analyses yet</li>'; return; }
+  for (const j of list) {
+    const li = document.createElement("li");
+    if (current === j.id) li.className = "active";
+    const name = j.label || j.patient_id || j.name || "Analysis";
+    const when = new Date(j.created * 1000).toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"});
+    li.innerHTML = `<div><div>${esc(name)}</div><div class="t">${when}</div></div><span class="pill ${j.status}">${j.status}</span>`;
+    li.onclick = () => openJob(j.id);
+    ul.appendChild(li);
+  }
+}
+
+// ---------- one job ----------
+async function openJob(id) {
+  current = id; clearTimeout(pollTimer); clearInterval(tickTimer);
+  loadJobs();
+  const r = await fetch("/api/jobs/" + id);
+  if (!r.ok) { $("#main").innerHTML = '<div class="empty">Analysis not found</div>'; return; }
+  const j = await r.json();
+  render(j);
+  if (j.status === "queued" || j.status === "running") pollTimer = setTimeout(() => openJob(id), 2000);
+  else loadJobs();
+}
+
+function render(j) {
+  const m = $("#main");
+  const name = j.label || j.patient_id || j.name || "Analysis";
+  const meta = [j.input_kind + ` · ${j.files} file${j.files > 1 ? "s" : ""}`, j.height_m ? `height ${j.height_m.toFixed(2)} m` : "height from DICOM", j.sex ? `sex ${j.sex}` : null, j.weight_kg ? `${j.weight_kg} kg` : null].filter(Boolean).join(" · ");
+  if (j.status !== "done") {
+    const skew = Date.now() / 1000 - j.now;
+    const t0 = j.started || j.created;
+    m.innerHTML = `
+      <div class="head"><div><h2 style="margin:0">${esc(name)}</h2><div class="sub">${esc(meta)}</div></div>
+        <div class="sub" id="elapsed"></div></div>
+      ${j.status === "queued" ? `<p>Waiting in line (position ${j.queue_position}). One scan is analysed at a time.</p>` : ""}
+      <ul class="steps">${j.steps.map((s, i) => {
+        const cls = j.status === "error" ? (i < j.step ? "ok" : "") : (i < j.step ? "ok" : i === j.step ? "now" : "");
+        return `<li class="${cls}"><span class="dot">${i < j.step ? "✓" : ""}</span>${s}</li>`;
+      }).join("")}</ul>
+      ${j.status === "error" ? `<div class="err"><b>The analysis stopped.</b><br>${esc(j.error || "")}</div>
+        <div class="dl"><a class="btn" href="/api/jobs/${j.id}/file/log.txt" target="_blank">Full log</a>
+        <button onclick="del('${j.id}')">Delete</button></div>` : ""}
+      ${j.log_tail && j.log_tail.length ? `<pre class="log">${esc(j.log_tail.join("\n"))}</pre>` : ""}`;
+    if (j.status !== "error") {
+      const tick = () => { const s = Math.max(0, Date.now() / 1000 - skew - t0); const e = $("#elapsed"); if (e) e.textContent = `${Math.floor(s / 60)} min ${String(Math.floor(s % 60)).padStart(2, "0")} s`; };
+      tick(); tickTimer = setInterval(tick, 1000);
+    }
+    return;
+  }
+
+  const rows = j.rows || [], res = j.results || {};
+  const find = n => rows.find(r => r.name.startsWith(n)) || {};
+  const tile = (k, row, val, unit) => {
+    const st = row.status ? `<span class="chip ${["LOW", "HIGH", "NORMAL"].includes(row.status) ? row.status : "grey"}">${row.status}</span>` : "";
+    return `<div class="tile"><div class="k">${k}</div><div class="v">${val ?? "—"} <small>${unit}</small></div>${st}</div>`;
+  };
+  const f = (v, d = 1) => v == null || v === "" ? "—" : Number(v).toFixed(d);
+  const ts = Date.now();
+  let group = null, trs = "";
+  for (const r of rows) {
+    if (r.group !== group) { group = r.group; trs += `<tr class="g"><td colspan="4">${group}</td></tr>`; }
+    const st = r.status ? `<span class="chip ${["LOW", "HIGH", "NORMAL"].includes(r.status) ? r.status : "grey"}">${r.status}</span>` : "";
+    trs += `<tr><td>${r.color ? `<span class="sw" style="background:${r.color}"></span>` : `<span class="sw"></span>`}${esc(r.name)}</td>
+      <td class="v">${esc(r.value)}</td><td>${st}</td><td class="sub">${esc(r.ref || "")}</td></tr>`;
+  }
+  m.innerHTML = `
+    <div class="head"><div><h2 style="margin:0">${esc(name)}</h2><div class="sub">${esc(meta)} · L3 slice ${res.L3_slice_index ?? "—"} (range ${res.L3_slice_range ?? "—"}) · finished in ${Math.round((j.finished - (j.started || j.created)) / 60)} min</div></div>
+      <button onclick="del('${j.id}')">Delete</button></div>
+    ${!res.height_m ? `<div class="err">Height was not given and not in the DICOM header, so SMI, PMI and the fat indices are blank. Run again with the height.</div>` : ""}
+    <div class="tiles">
+      ${tile("SMI", find("SMI"), f(res.SMI), "cm²/m²")}
+      ${tile("PMI (area)", find("PMI (area)"), f(res.PMI_area, 2), "cm²/m²")}
+      ${tile("PMI (diameters)", find("PMI (diam"), f(res.PMI_diam, 2), "cm²/m²")}
+      ${tile("Left psoas density", find("Left psoas density"), f(res.psoas_L_HU_mean), "HU")}
+      ${tile("Muscle density", find("Muscle density"), f(res.muscle_HU_mean), "HU")}
+      ${tile("VAT area", find("VAT"), f(res.VAT_cm2), "cm²")}
+    </div>
+    <div class="tabs"><button class="on" data-t="img">Report image</button><button data-t="tab">All values</button></div>
+    <div id="t-img" class="report" style="margin-top:14px">
+      <a href="/api/jobs/${j.id}/file/report.png?t=${ts}" target="_blank"><img src="/api/jobs/${j.id}/file/report.png?t=${ts}" alt="Colour L3 report"></a>
+    </div>
+    <div id="t-tab" class="hidden">
+      <table><thead><tr><th>Measurement</th><th>Value</th><th>Status</th><th>Cut-off</th></tr></thead><tbody>${trs}</tbody></table>
+      <div class="legend">
+        <span style="--c:var(--sat)">SAT</span><span style="--c:var(--vat)">VAT</span><span style="--c:var(--imat)">IMAT</span>
+        <span style="--c:var(--muscle)">Other muscle</span><span style="--c:var(--psr)">Right psoas</span><span style="--c:var(--psl)">Left psoas</span>
+      </div>
+    </div>
+    <div class="dl">
+      <a class="btn" href="/api/jobs/${j.id}/file/report.png?download=1">⬇ Report image (PNG)</a>
+      <a class="btn" href="/api/jobs/${j.id}/file/report.pdf?download=1">⬇ Report (PDF)</a>
+      <a class="btn" href="/api/jobs/${j.id}/file/results.csv?download=1">⬇ Results (CSV)</a>
+      <a class="btn" href="/api/jobs/${j.id}/file/l3_labels.nii.gz?download=1">⬇ Masks (NIfTI)</a>
+      <a class="btn" href="/api/jobs/${j.id}/file/log.txt" target="_blank">Log</a>
+    </div>
+    <div class="note">Cut-offs are literature references, not a diagnosis. Masks are from baseline models (TotalSegmentator + Comp2Comp), not yet checked by a radiologist. Research use only.</div>`;
+  m.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+    m.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+    $("#t-img").classList.toggle("hidden", b.dataset.t !== "img");
+    $("#t-tab").classList.toggle("hidden", b.dataset.t !== "tab");
+  });
+}
+
+async function del(id) {
+  const r = await fetch("/api/jobs/" + id, {method: "DELETE"});
+  if (r.ok) { current = null; $("#main").innerHTML = '<div class="empty"><div class="big">Deleted</div></div>'; loadJobs(); }
+}
+// ---------- database view: all stored results ----------
+$("#openDb").onclick = () => openDb();
+let dbFilters = {q: "", sex: "", flag: ""};
+
+async function openDb() {
+  current = null; clearTimeout(pollTimer); clearInterval(tickTimer); loadJobs();
+  const qs = new URLSearchParams(dbFilters).toString();
+  const d = await (await fetch("/api/db/results?" + qs)).json();
+  const f = (v, n = 1) => v == null || v === "" ? "—" : Number(v).toFixed(n);
+  const chip = s => !s ? "" : `<span class="chip ${["LOW", "HIGH", "NORMAL"].includes(s) ? s : "grey"}">${s}</span>`;
+  const known = new Set(Object.keys(jobsById));
+  const rows = d.rows.map(r => `
+    <tr class="${known.has(r.id) ? "click" : ""}" data-id="${esc(r.id)}">
+      <td>${esc(r.patient_key || "—")}${r.label && r.label !== r.patient_key ? `<div class="t">${esc(r.label)}</div>` : ""}</td>
+      <td>${esc(r.sex || "—")}</td><td>${esc(r.age || "—")}</td><td>${esc((r.created_at || "").slice(0, 10))}</td>
+      <td class="n">${f(r.height_m, 2)}</td>
+      <td class="n">${f(r.SMA_cm2)}</td>
+      <td class="n">${f(r.SMI)}${chip(r.SMI_status)}</td>
+      <td class="n">${f(r.PMI_area, 2)}${chip(r.PMI_area_status)}</td>
+      <td class="n">${f(r.PMI_diam, 2)}</td>
+      <td class="n">${f(r.psoas_L_HU_mean)}${chip(r.psoas_L_HU_status)}</td>
+      <td class="n">${f(r.muscle_HU_mean)}${chip(r.muscle_HU_status)}</td>
+      <td class="n">${f(r.SAT_cm2)}</td>
+      <td class="n">${f(r.VAT_cm2)}${chip(r.VAT_status)}</td>
+      <td class="n">${f(r.IMAT_cm2, 2)}</td>
+    </tr>`).join("");
+  $("#main").innerHTML = `
+    <div class="head"><div><h2 style="margin:0">All results (database)</h2>
+      <div class="sub">${d.counts.patients} patients · ${d.counts.analyses} analyses · ${d.counts.results} with results · ${esc(d.db_path)}</div></div>
+      <a class="btn" href="/api/db/export.csv?${qs}">⬇ Export to Excel (CSV)</a></div>
+    <div class="filters">
+      <input type="text" id="fq" placeholder="Search patient / label" value="${esc(dbFilters.q)}">
+      <select id="fsex"><option value="">Any sex</option><option value="M">Male</option><option value="F">Female</option></select>
+      <select id="fflag">
+        <option value="">All results</option>
+        <option value="any_low">Any LOW / HIGH flag</option>
+        <option value="SMI_status=LOW">Low SMI</option>
+        <option value="PMI_area_status=LOW">Low PMI (area)</option>
+        <option value="psoas_L_HU_status=LOW">Low left psoas density</option>
+        <option value="muscle_HU_status=LOW">Low muscle density</option>
+        <option value="VAT_status=HIGH">High VAT</option>
+      </select>
+    </div>
+    ${d.rows.length ? `<div class="dbwrap"><table class="db"><thead><tr>
+      <th>Patient</th><th>Sex</th><th>Age</th><th>Date</th><th>Height m</th><th>SMA cm²</th><th>SMI</th>
+      <th>PMI area</th><th>PMI diam</th><th>L psoas HU</th><th>Muscle HU</th><th>SAT cm²</th><th>VAT cm²</th><th>IMAT cm²</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty">No finished results match.</div>`}
+    <div class="note">Every finished analysis is saved here automatically. Click a row to open its report. Flags use the cut-offs in report.py.</div>`;
+  $("#fsex").value = dbFilters.sex; $("#fflag").value = dbFilters.flag;
+  let t;
+  $("#fq").oninput = e => { clearTimeout(t); t = setTimeout(() => { dbFilters.q = e.target.value; openDb().then(() => { const i = $("#fq"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }); }, 350); };
+  $("#fsex").onchange = e => { dbFilters.sex = e.target.value; openDb(); };
+  $("#fflag").onchange = e => { dbFilters.flag = e.target.value; openDb(); };
+  $("#main").querySelectorAll("tr.click").forEach(tr => tr.onclick = () => openJob(tr.dataset.id));
+}
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c])); }
+loadJobs();
+</script>
+</body>
+</html>

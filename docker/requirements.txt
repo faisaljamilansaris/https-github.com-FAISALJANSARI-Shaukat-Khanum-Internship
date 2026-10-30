@@ -1,0 +1,27 @@
+# Python packages for the L3 app inside Docker (torch is installed separately, CPU or GPU build).
+# Only the two models' runtimes are installed, not all of Comp2Comp (no TensorFlow etc.).
+numpy==1.26.4
+setuptools<70          # TotalSegmentatorV2 still imports pkg_resources
+
+# TotalSegmentator v2 (Stanford fork used by Comp2Comp) -> L3 vertebra + iliopsoas
+nnunetv2==2.2
+totalsegmentatorv2 @ git+https://github.com/StanfordMIMI/TotalSegmentatorV2.git@b2b57b59f7874cc50c603a8404081b717e041369
+
+# nnU-Net v1 (Stanford fork) -> runs the Comp2Comp muscle/fat model Task927_FatMuscle
+nnunet @ git+https://github.com/StanfordMIMI/nnUNet_cust.git@7ae95725d1f1985481c271cd0224cec70dcf4498
+
+# CT reading + measuring + report
+SimpleITK
+pydicom
+python-gdcm
+pylibjpeg
+pylibjpeg-libjpeg
+nibabel
+pandas
+scipy
+matplotlib
+
+# web app
+fastapi
+uvicorn
+python-multipart

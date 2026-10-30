@@ -1,0 +1,4 @@
+l3_data/
+*.tar
+__pycache__/
+*.pyc
