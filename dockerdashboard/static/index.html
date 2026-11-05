@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Docker Dashboard</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:20px;background:#f6f7f9;color:#222}
+  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+  h1{font-size:20px;margin:0}
+  .stat{background:#fff;border-radius:6px;padding:6px 12px;box-shadow:0 1px 2px #0001}
+  table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 1px 2px #0001}
+  th,td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:middle}
+  th{background:#fafafa;font-weight:600}
+  .running{color:#0a7d33}.exited,.dead,.created{color:#888}.restarting,.paused{color:#b36b00}
+  .up{color:#0a7d33;font-weight:600}.down{color:#c62828;font-weight:600}
+  button{margin:2px;padding:4px 8px;border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;font-size:13px}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.danger{color:#c62828;border-color:#e6a6a6}
+  .muted{color:#999}
+  .msg{color:#c62828;margin:8px 0;min-height:1em}
+  a{color:#1565c0}
+  #modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center}
+  #modal.open{display:flex}
+  #modal .box{background:#fff;width:min(900px,95vw);height:80vh;display:flex;flex-direction:column;padding:12px;border-radius:8px}
+  #modal pre{flex:1;overflow:auto;background:#111;color:#ddd;padding:10px;font-size:12px;margin:8px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Docker Dashboard</h1>
+  <span class="stat" id="counts">loading…</span>
+  <label><input type="checkbox" id="auto" checked> auto-refresh 10 s</label>
+  <button id="refresh">Refresh</button>
+  <span class="muted" id="updated"></span>
+</header>
+<div class="msg" id="msg"></div>
+<table>
+  <thead>
+    <tr><th>Name</th><th>Image</th><th>Status</th><th>Ports</th><th>URL</th><th>Ping</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<div id="modal">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b id="logtitle"></b><button onclick="closeLogs()">Close</button>
+    </div>
+    <pre id="logs"></pre>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let lastRows = [];
+let timer = null;
+
+function msg(t) { $("#msg").textContent = t || ""; }
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {headers: {"Content-Type": "application/json"}, ...opts});
+  if (!r.ok) {
+    let d = "";
+    try { d = (await r.json()).detail; } catch {}
+    throw new Error(d || r.statusText);
+  }
+  return r.json();
+}
+
+function pingCell(p) {
+  if (!p) return '<span class="muted">—</span>';
+  const extra = p.code ? ` (HTTP ${p.code})` : (p.error ? ` (${esc(p.error)})` : "");
+  return p.ok
+    ? `<span class="up">UP</span> ${p.ms} ms${extra}`
+    : `<span class="down">DOWN</span> ${p.ms} ms${extra}`;
+}
+
+function urlCell(r) {
+  const saved = r.saved || [];
+  let html;
+  if (saved.length) {
+    html = saved.map(s => s.kind === "http"
+      ? `<a href="${esc(s.url)}" target="_blank">${esc(s.url)}</a>`
+      : `tcp ${esc(s.url)}`).join("<br>") + ` <span class="muted">(saved)</span>`;
+  } else if (r.links.length) {
+    html = r.links.map(l => `<a href="${esc(l)}" target="_blank">${esc(l)}</a>`).join("<br>");
+  } else {
+    html = '<span class="muted">no published port</span>';
+  }
+  return html + ` <button onclick="editUrl('${esc(r.name)}')">Edit</button>`;
+}
+
+function actionsCell(r) {
+  const btn = (action, label, cls = "") => {
+    const blocked = r.protected && ["stop", "restart", "pause", "remove"].includes(action);
+    return `<button class="${cls}" ${blocked ? "disabled title='The dashboard cannot stop itself'" : ""}
+      onclick="act('${esc(r.id)}','${action}','${esc(r.name)}')">${label}</button>`;
+  };
+  let h = "";
+  if (r.status === "running") h += btn("stop", "Stop") + btn("restart", "Restart") + btn("pause", "Pause");
+  else if (r.status === "paused") h += btn("unpause", "Unpause");
+  else h += btn("start", "Start");
+  h += `<button onclick="logs('${esc(r.id)}','${esc(r.name)}')">Logs</button>`;
+  h += btn("remove", "Remove", "danger");
+  return h;
+}
+
+async function load(ping = true) {
+  try {
+    const d = await api(`/api/containers?do_ping=${ping}`);
+    lastRows = d.containers;
+    $("#counts").textContent = `${d.running} running · ${d.stopped} stopped · ${d.total} total`;
+    $("#rows").innerHTML = d.containers.map(r => `
+      <tr>
+        <td><b>${esc(r.name)}</b>${r.protected ? ' <span class="muted">(this dashboard)</span>' : ""}<br>
+            <span class="muted">${esc(r.id)}</span></td>
+        <td>${esc(r.image)}</td>
+        <td class="${esc(r.status)}">${esc(r.status)}${r.health ? " · " + esc(r.health) : ""}</td>
+        <td>${r.ports.map(p => esc(p)).join("<br>") || '<span class="muted">—</span>'}</td>
+        <td>${urlCell(r)}</td>
+        <td>${pingCell(r.ping)}</td>
+        <td>${actionsCell(r)}</td>
+      </tr>`).join("") || `<tr><td colspan="7" class="muted">No containers.</td></tr>`;
+    $("#updated").textContent = "updated " + new Date().toLocaleTimeString();
+    msg("");
+  } catch (e) {
+    msg("Could not load: " + e.message);
+  }
+}
+
+async function act(id, action, name) {
+  if (action === "remove" && !confirm(`Remove container "${name}"? This force-deletes it.`)) return;
+  msg("");
+  try {
+    await api(`/api/containers/${id}/${action}`, {method: "POST"});
+    await load(false);
+  } catch (e) {
+    msg(`${action} failed: ${e.message}`);
+  }
+}
+
+async function editUrl(name) {
+  const r = lastRows.find(x => x.name === name);
+  const first = (r.saved || [])[0];
+  const current = first
+    ? (first.kind === "tcp" ? "tcp:" + first.url : first.url)
+    : (r.links[0] || "");
+  const v = prompt(
+    `URL for ${name}\n• http://… or localhost:8080 for a web page\n• tcp:host:port for a TCP check\nLeave empty to remove all saved URLs.`,
+    current);
+  if (v === null) return;
+  try {
+    await api("/api/urls", {method: "POST", body: JSON.stringify({container: name, url: v})});
+    await load(true);
+  } catch (e) {
+    msg(e.message);
+  }
+}
+
+async function logs(id, name) {
+  $("#logtitle").textContent = name;
+  $("#logs").textContent = "Loading…";
+  $("#modal").classList.add("open");
+  try {
+    const d = await api(`/api/containers/${id}/logs?tail=300`);
+    $("#logs").textContent = d.logs || "(no output)";
+  } catch (e) {
+    $("#logs").textContent = e.message;
+  }
+}
+function closeLogs() { $("#modal").classList.remove("open"); }
+
+function schedule() {
+  clearInterval(timer);
+  if ($("#auto").checked) timer = setInterval(() => load(true), 10000);
+}
+
+$("#refresh").onclick = () => load(true);
+$("#auto").onchange = schedule;
+load(true);
+schedule();
+</script>
+</body>
+</html>
