@@ -1,0 +1,18 @@
+name: dockerdash
+
+services:
+  dockerdash:
+    build: .
+    image: dockerdash:latest
+    container_name: dockerdash
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/data                                # saved URLs database lives here
+    environment:
+      - DASH_HOST=localhost
+      - DASH_SELF_NAME=dockerdash                   # must match container_name
+    extra_hosts:
+      - "host.docker.internal:host-gateway"         # lets pings reach published ports (needed on Linux; Docker Desktop has it already)
+    restart: unless-stopped
