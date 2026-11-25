@@ -1,4 +1,0 @@
-patient,age,male,triage_level,pulse,bp_top,bp_bottom,breathing,oxygen,temperature_c,pain,disease_count
-Patient 1 (looks sick),68,1,2,118,92,58,24,91,38.8,7,2
-Patient 2 (looks stable),45,0,4,78,124,80,16,99,36.9,3,0
-Patient 3 (little information),72,0,,105,100,,,,,,
