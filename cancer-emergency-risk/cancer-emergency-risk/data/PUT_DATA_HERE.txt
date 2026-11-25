@@ -1,0 +1,4 @@
+Put the data files here:
+  NHAMCS: ed2012-stata.dta, ed2013-stata.dta, ed2014-stata.dta
+  Yale:   5v_cleandf.RData
+See README.md in the main folder for download links and details.
